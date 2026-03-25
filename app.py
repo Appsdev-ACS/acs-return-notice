@@ -276,7 +276,7 @@ def get_form_data():
                     "HouseholdName": row.get("Household", ""),
                     "PersonId": row.get("PARENT 1: Person ID", "") if user_email.strip().lower() == p1_email else row.get("PARENT 2: Person ID", ""),
                     "Parent_1_Name_and_Email": parent1,
-                    "Parent_2_Name_and_Email": parent2,
+                    "Parent_2_Name_and_Email": parent2.replace("()",""),
                     "Who_is_completing_the_form": row.get("Parent 1 Full Name", "") if user_email.strip().lower() == p1_email else row.get("Parent 2 Full Name", ""),
                     "ChildDetails": "\n".join(child_lines),
                     "DateOfReturn": row.get("Return Date", ""),
