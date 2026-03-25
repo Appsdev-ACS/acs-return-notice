@@ -25,10 +25,20 @@ app.config.update(
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True
 )
-origins = os.getenv("CORS_ORIGINS", "").split(",")
+# origins = os.getenv("CORS_ORIGINS", "").split(",")
 
-# CORS(app, supports_credentials=True)
-CORS(app, supports_credentials=True, origins=origins)
+# # CORS(app, supports_credentials=True)
+# CORS(app, supports_credentials=True, origins=origins)
+
+origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+
+CORS(
+    app,
+    supports_credentials=True,
+    origins=origins,
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 react_base_uri =  os.getenv("REACT_BASE_URI")
 CLIENT_ID = os.getenv("CLIENT_ID")
