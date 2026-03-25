@@ -14,9 +14,15 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key_change_this"
+# app.config.update(
+#     SESSION_COOKIE_SAMESITE="Lax",
+#     SESSION_COOKIE_SECURE=False,
+#     SESSION_COOKIE_HTTPONLY=True
+# )
+
 app.config.update(
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True
 )
 origins = os.getenv("CORS_ORIGINS", "").split(",")
