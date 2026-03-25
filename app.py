@@ -43,10 +43,10 @@ sheet_name = "Households"
 """Uploads the DataFrame to Google Sheets."""
 
 # for prod
-creds, _ = default(scopes=[
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-])
+# creds, _ = default(scopes=[
+#     "https://www.googleapis.com/auth/spreadsheets",
+#     "https://www.googleapis.com/auth/drive"
+# ])
 
 
 # for local
@@ -61,16 +61,23 @@ creds, _ = default(scopes=[
 #     "service-account.json",  # 👈 your file name
 #     scopes=SCOPES
 # )
-client = gspread.authorize(creds)
+# client = gspread.authorize(creds)
 
-# Open or create the Google Sheet
-try:
-    sheet = client.open(SPREADSHEET_NAME).worksheet(sheet_name)
-except gspread.exceptions.SpreadsheetNotFound:
-    raise Exception("Spreadsheet not found")
-except gspread.exceptions.WorksheetNotFound:
-    raise Exception(f"Worksheet '{sheet_name}' not found")
-
+# # Open or create the Google Sheet
+# try:
+#     sheet = client.open(SPREADSHEET_NAME).worksheet(sheet_name)
+# except gspread.exceptions.SpreadsheetNotFound:
+#     raise Exception("Spreadsheet not found")
+# except gspread.exceptions.WorksheetNotFound:
+#     raise Exception(f"Worksheet '{sheet_name}' not found")
+def get_sheet():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds, _ = default(scopes=scopes)
+    client = gspread.authorize(creds)
+    return client.open(SPREADSHEET_NAME).worksheet(sheet_name)
     
 
 
@@ -214,8 +221,14 @@ def get_form_data():
     user_email = get_logged_in_email()
     if not user_email:
         return {"error": "Unauthorized"}, 401
+    
+    try:
+        sheet = get_sheet()
+        records = sheet.get_all_records()
+    except Exception as e:
+        return {"error": f"Sheet access failed: {str(e)}"}, 500
 
-    records = sheet.get_all_records()
+    # records = sheet.get_all_records()
 
     for idx, row in enumerate(records, start=2):
         p1_email = str(row.get("PARENT 1: Email 1", "")).strip().lower()
@@ -276,9 +289,16 @@ def return_notice():
         return {"error": "Unauthorized"}, 401
 
     data = request.get_json() or {}
+    
+    try:
+        sheet = get_sheet()
+        records = sheet.get_all_records()
+        headers = sheet.row_values(1)
+    except Exception as e:
+        return {"error": f"Sheet access failed: {str(e)}"}, 500
 
-    records = sheet.get_all_records()
-    headers = sheet.row_values(1)
+    # records = sheet.get_all_records()
+    # headers = sheet.row_values(1)
 
     row_number = None
     for idx, row in enumerate(records, start=2):
