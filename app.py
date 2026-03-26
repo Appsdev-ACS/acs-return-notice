@@ -8,6 +8,7 @@ from google.oauth2.service_account import Credentials
 import os
 from google.auth import default
 import gspread
+from datetime import datetime
 
 
 load_dotenv()
@@ -300,6 +301,51 @@ def get_form_data():
     })
 
 
+# @app.route("/api/return-notice", methods=["POST"])
+# def return_notice():
+#     user_email = get_logged_in_email()
+#     if not user_email:
+#         return {"error": "Unauthorized"}, 401
+
+#     data = request.get_json() or {}
+    
+#     try:
+#         sheet = get_sheet()
+#         records = sheet.get_all_records()
+#         headers = sheet.row_values(1)
+#     except Exception as e:
+#         return {"error": f"Sheet access failed: {str(e)}"}, 500
+
+#     # records = sheet.get_all_records()
+#     # headers = sheet.row_values(1)
+
+#     row_number = None
+#     for idx, row in enumerate(records, start=2):
+#         p1_email = str(row.get("PARENT 1: Email 1", "")).strip().lower()
+#         p2_email = str(row.get("PARENT 2: Email 1", "")).strip().lower()
+
+#         if user_email.strip().lower() in [p1_email, p2_email]:
+#             row_number = idx
+#             break
+
+#     if not row_number:
+#         return {"error": "Matching row not found"}, 404
+
+#     def col_index(header_name):
+#         return headers.index(header_name) + 1
+
+#     # Update Return Date
+#     if "Return Date" in headers:
+#         sheet.update_cell(row_number, col_index("Return Date"), data.get("DateOfReturn", ""))
+
+#     # Update Comments
+#     if "Comments" in headers:
+#         sheet.update_cell(row_number, col_index("Comments"), data.get("comments", ""))
+
+#     return {"message": "Form submitted successfully"}
+
+
+
 @app.route("/api/return-notice", methods=["POST"])
 def return_notice():
     user_email = get_logged_in_email()
@@ -307,16 +353,13 @@ def return_notice():
         return {"error": "Unauthorized"}, 401
 
     data = request.get_json() or {}
-    
+
     try:
         sheet = get_sheet()
         records = sheet.get_all_records()
         headers = sheet.row_values(1)
     except Exception as e:
         return {"error": f"Sheet access failed: {str(e)}"}, 500
-
-    # records = sheet.get_all_records()
-    # headers = sheet.row_values(1)
 
     row_number = None
     for idx, row in enumerate(records, start=2):
@@ -333,16 +376,37 @@ def return_notice():
     def col_index(header_name):
         return headers.index(header_name) + 1
 
-    # Update Return Date
-    if "Return Date" in headers:
-        sheet.update_cell(row_number, col_index("Return Date"), data.get("DateOfReturn", ""))
+    updates = []
 
-    # Update Comments
+    if "Return Date" in headers:
+        updates.append({
+            "range": gspread.utils.rowcol_to_a1(row_number, col_index("Return Date")),
+            "values": [[data.get("DateOfReturn", "")]]
+        })
+
     if "Comments" in headers:
-        sheet.update_cell(row_number, col_index("Comments"), data.get("comments", ""))
+        updates.append({
+            "range": gspread.utils.rowcol_to_a1(row_number, col_index("Comments")),
+            "values": [[data.get("comments", "")]]
+        })
+
+    if "updated by" in headers:
+        updates.append({
+            "range": gspread.utils.rowcol_to_a1(row_number, col_index("updated by")),
+            "values": [[data.get("Who_is_completing_the_form", "")]]
+        })
+
+    if "updated on" in headers:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        updates.append({
+            "range": gspread.utils.rowcol_to_a1(row_number, col_index("updated on")),
+            "values": [[timestamp]]
+        })
+
+    if updates:
+        sheet.batch_update(updates)
 
     return {"message": "Form submitted successfully"}
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
