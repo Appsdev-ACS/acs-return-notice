@@ -10,7 +10,7 @@ from google.auth import default
 import gspread
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
+from urllib.parse import quote
 
 load_dotenv()
 
@@ -126,7 +126,7 @@ def login():
     # )
     next_page = request.args.get("next", "#/form")
     session["next_page"] = next_page
-    auth_redirect = f"https://accounts.veracross.eu/acsad/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}&scope=openid%20sso"
+    auth_redirect = f"https://accounts.veracross.eu/acsad/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}&scope=openid%20sso&state={quote(next_page, safe='')}"
     return redirect(auth_redirect)
 
 # Step 2: Veracross redirects back here
@@ -163,7 +163,7 @@ def callback():
     # Save user session
     session["user"] = decoded
     
-    next_page = session.pop("next_page", "#/form")
+    next_page = request.args.get("state", "#/form")
     return redirect(f"{react_base_uri}/{next_page}")
 
     # return redirect(f"{react_base_uri}/#/form")
