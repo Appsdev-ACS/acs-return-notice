@@ -265,7 +265,7 @@ def get_form_data():
                 if full_name or person_id:
                     child_lines.append(
                         # f"ID: {person_id} | Name: {full_name} | Grade: {grade} | Homeroom: {homeroom}"
-                        f"{person_id} - {full_name}"
+                        f"{full_name} - {grade}"
 
                     )
 
