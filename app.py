@@ -93,6 +93,12 @@ def get_sheet(worksheet_name):
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
+    # dev
+    # creds = Credentials.from_service_account_file(
+    #     "service-account.json",  # 👈 your file name
+    #     scopes=scopes
+    # )
+    # prod
     creds, _ = default(scopes=scopes)
     client = gspread.authorize(creds)
     return client.open(SPREADSHEET_NAME).worksheet(worksheet_name)
@@ -484,7 +490,7 @@ def location_notice():
         return {"error": "HouseholdId is required"}, 400
 
     try:
-        sheet = get_sheet(LOCATION_SHEET_NAME)
+        sheet = get_sheet("Location")
         records = sheet.get_all_records()
         headers = sheet.row_values(1)
     except Exception as e:
