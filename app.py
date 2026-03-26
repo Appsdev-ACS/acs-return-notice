@@ -88,14 +88,14 @@ sheet_name = "Households"
 #     raise Exception("Spreadsheet not found")
 # except gspread.exceptions.WorksheetNotFound:
 #     raise Exception(f"Worksheet '{sheet_name}' not found")
-def get_sheet():
+def get_sheet(worksheet_name):
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
     creds, _ = default(scopes=scopes)
     client = gspread.authorize(creds)
-    return client.open(SPREADSHEET_NAME).worksheet(sheet_name)
+    return client.open(SPREADSHEET_NAME).worksheet(worksheet_name)
     
 
 
@@ -241,7 +241,7 @@ def get_form_data():
         return {"error": "Unauthorized"}, 401
     
     try:
-        sheet = get_sheet()
+        sheet = get_sheet(worksheet_name=sheet_name)
         records = sheet.get_all_records()
     except Exception as e:
         return {"error": f"Sheet access failed: {str(e)}"}, 500
@@ -312,7 +312,7 @@ def return_notice():
     data = request.get_json() or {}
 
     try:
-        sheet = get_sheet()
+        sheet = get_sheet(worksheet_name=sheet_name)
         records = sheet.get_all_records()
         headers = sheet.row_values(1)
     except Exception as e:
@@ -365,6 +365,187 @@ def return_notice():
         sheet.batch_update(updates)
 
     return {"message": "Form submitted successfully"}
+
+
+
+@app.route("/api/location-form-data")
+def get_location_form_data():
+    user_email = get_logged_in_email()
+    if not user_email:
+        return {"error": "Unauthorized"}, 401
+
+    try:
+        households_sheet = get_sheet(sheet_name)
+        household_records = households_sheet.get_all_records()
+
+        location_sheet = get_sheet("Location")
+        location_records = location_sheet.get_all_records()
+    except Exception as e:
+        return {"error": f"Sheet access failed: {str(e)}"}, 500
+
+    for idx, row in enumerate(household_records, start=2):
+        p1_email = str(row.get("PARENT 1: Email 1", "")).strip().lower()
+        p2_email = str(row.get("PARENT 2: Email 1", "")).strip().lower()
+        current_user = user_email.strip().lower()
+
+        if current_user in [p1_email, p2_email]:
+            household_id = str(row.get("Household ID", "")).strip()
+
+            parent1 = f'{row.get("Parent 1 Full Name", "")} ({row.get("PARENT 1: Email 1", "")})'.strip()
+            parent2 = f'{row.get("Parent 2 Full Name", "")} ({row.get("PARENT 2: Email 1", "")})'.strip().replace("()", "")
+
+            who_is_completing = (
+                row.get("Parent 1 Full Name", "")
+                if current_user == p1_email
+                else row.get("Parent 2 Full Name", "")
+            )
+
+            children = []
+            for i in range(1, 6):
+                person_id = row.get(f"Student {i} \nPerson ID", "") or row.get(f"Student {i}\nPerson ID", "")
+                full_name = row.get(f"Student {i} \nFull Name", "") or row.get(f"Student {i}\nFull Name", "")
+                grade = row.get(f"Student {i} \nCurrent Grade", "") or row.get(f"Student {i}\nCurrent Grade", "")
+                homeroom = row.get(f"Student {i}\nHomeroom", "") or row.get(f"Student {i} \nHomeroom", "")
+
+                if full_name or person_id:
+                    children.append({
+                        "studentNumber": i,
+                        "personId": person_id,
+                        "fullName": full_name,
+                        "grade": grade,
+                        "homeroom": homeroom,
+                        "display": f"{person_id} - {full_name} - {grade} - {homeroom}"
+                    })
+
+            existing_location = next(
+                (
+                    r for r in location_records
+                    if str(r.get("Household ID", "")).strip() == household_id
+                ),
+                {}
+            )
+
+            return jsonify({
+                "rowNumber": idx,
+                "formData": {
+                    "HouseholdId": household_id,
+                    "HouseholdName": row.get("Household", ""),
+                    "PersonId": (
+                        row.get("PARENT 1: Person ID", "")
+                        if current_user == p1_email
+                        else row.get("PARENT 2: Person ID", "")
+                    ),
+                    "Parent_1_Name_and_Email": parent1,
+                    "Parent_2_Name_and_Email": parent2,
+                    "Who_is_completing_the_form": who_is_completing,
+                    "Country": existing_location.get("Country", ""),
+                    "City": existing_location.get("City", ""),
+                    "Comments": existing_location.get("Comments", ""),
+                    "Child1LearningMode": existing_location.get("Child1 Learning Mode", ""),
+                    "Child2LearningMode": existing_location.get("Child 2 Learning Mode", ""),
+                    "Child3LearningMode": existing_location.get("Child 3 Learning Mode", ""),
+                    "Child4LearningMode": existing_location.get("Child 4 Learning Mode", ""),
+                    "Child5LearningMode": existing_location.get("Child 5 Learning Mode", ""),
+                    "children": children
+                }
+            })
+
+    return jsonify({
+        "rowNumber": None,
+        "formData": {
+            "HouseholdId": "",
+            "HouseholdName": "",
+            "PersonId": "",
+            "Parent_1_Name_and_Email": "",
+            "Parent_2_Name_and_Email": "",
+            "Who_is_completing_the_form": "",
+            "Country": "",
+            "City": "",
+            "Comments": "",
+            "Child1LearningMode": "",
+            "Child2LearningMode": "",
+            "Child3LearningMode": "",
+            "Child4LearningMode": "",
+            "Child5LearningMode": "",
+            "children": []
+        }
+    })
+
+@app.route("/api/location-notice", methods=["POST"])
+def location_notice():
+    user_email = get_logged_in_email()
+    if not user_email:
+        return {"error": "Unauthorized"}, 401
+
+    data = request.get_json() or {}
+
+    household_id = str(data.get("HouseholdId", "")).strip()
+    if not household_id:
+        return {"error": "HouseholdId is required"}, 400
+
+    try:
+        sheet = get_sheet(LOCATION_SHEET_NAME)
+        records = sheet.get_all_records()
+        headers = sheet.row_values(1)
+    except Exception as e:
+        return {"error": f"Sheet access failed: {str(e)}"}, 500
+
+    timestamp = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%Y-%m-%d %H:%M:%S")
+
+    row_number = None
+    for idx, row in enumerate(records, start=2):
+        if str(row.get("Household ID", "")).strip() == household_id:
+            row_number = idx
+            break
+
+    def get_value(header_name):
+        mapping = {
+            "Household ID": household_id,
+            "Completed by": data.get("Who_is_completing_the_form", ""),
+            "Timestamp": timestamp,
+            "Country": data.get("Country", ""),
+            "City": data.get("City", ""),
+            "Child1 Learning Mode": data.get("Child1LearningMode", ""),
+            "Child 2 Learning Mode": data.get("Child2LearningMode", ""),
+            "Child 3 Learning Mode": data.get("Child3LearningMode", ""),
+            "Child 4 Learning Mode": data.get("Child4LearningMode", ""),
+            "Child 5 Learning Mode": data.get("Child5LearningMode", ""),
+            "Comments": data.get("Comments", ""),
+        }
+        return mapping.get(header_name, "")
+
+    if row_number:
+        updates = []
+        for header in headers:
+            if header in [
+                "Household ID",
+                "Completed by",
+                "Timestamp",
+                "Country",
+                "City",
+                "Child1 Learning Mode",
+                "Child 2 Learning Mode",
+                "Child 3 Learning Mode",
+                "Child 4 Learning Mode",
+                "Child 5 Learning Mode",
+                "Comments",
+            ]:
+                col = headers.index(header) + 1
+                updates.append({
+                    "range": gspread.utils.rowcol_to_a1(row_number, col),
+                    "values": [[get_value(header)]]
+                })
+
+        if updates:
+            sheet.batch_update(updates)
+
+        return {"message": "Location form updated successfully"}
+
+    new_row = [get_value(header) for header in headers]
+    sheet.append_row(new_row)
+
+    return {"message": "Location form submitted successfully"}
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
