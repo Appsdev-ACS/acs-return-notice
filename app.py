@@ -390,16 +390,16 @@ def return_notice():
             "values": [[data.get("comments", "")]]
         })
 
-    if "updated by" in headers:
+    if "Updated By" in headers:
         updates.append({
-            "range": gspread.utils.rowcol_to_a1(row_number, col_index("updated by")),
+            "range": gspread.utils.rowcol_to_a1(row_number, col_index("Updated By")),
             "values": [[data.get("Who_is_completing_the_form", "")]]
         })
 
-    if "updated on" in headers:
+    if "Updated On" in headers:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         updates.append({
-            "range": gspread.utils.rowcol_to_a1(row_number, col_index("updated on")),
+            "range": gspread.utils.rowcol_to_a1(row_number, col_index("Updated On")),
             "values": [[timestamp]]
         })
 
