@@ -124,6 +124,8 @@ def login():
     #     f"redirect_uri={REDIRECT_URI}&"
     #     f"scope=openid%20sso"
     # )
+    next_page = request.args.get("next", "#/form")
+    session["next_page"] = next_page
     auth_redirect = f"https://accounts.veracross.eu/acsad/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}&scope=openid%20sso"
     return redirect(auth_redirect)
 
@@ -160,8 +162,11 @@ def callback():
 
     # Save user session
     session["user"] = decoded
+    
+    next_page = session.pop("next_page", "#/form")
+    return redirect(f"{react_base_uri}/{next_page}")
 
-    return redirect(f"{react_base_uri}/#/form")
+    # return redirect(f"{react_base_uri}/#/form")
 
 # @app.route("/logout",  methods=["POST"])
 # def logout():
