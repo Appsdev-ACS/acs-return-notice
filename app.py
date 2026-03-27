@@ -451,7 +451,7 @@ def get_location_form_data():
                     "Who_is_completing_the_form": who_is_completing,
                     "Country": existing_location.get("Country", ""),
                     "City": existing_location.get("City", ""),
-                    "Timezone":existing_location.get("TimeZone",""),
+                    "TimeZone":existing_location.get("TimeZone",""),
                     "Comments": existing_location.get("Comments", ""),
                     "Child1LearningMode": existing_location.get("Child1 Learning Mode", ""),
                     "Child2LearningMode": existing_location.get("Child 2 Learning Mode", ""),
