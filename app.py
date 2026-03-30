@@ -581,7 +581,18 @@ def location_notice():
     sheet.append_row(new_row)
 
     return {"message": "Location form submitted successfully"}
+@app.route("/debug-set-session")
+def debug_set_session():
+    session["user"] = {"email": "test@acs.sch.ae"}
+    session.modified = True
+    session.permanent = True
+    return {"ok": True, "session": session.get("user")}
 
+@app.route("/debug-read-session")
+def debug_read_session():
+    print("debug read session:", session.get("user"))
+    print("debug read cookies:", request.cookies)
+    return {"session": session.get("user")}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
