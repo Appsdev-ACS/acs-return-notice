@@ -181,6 +181,8 @@ def callback():
     session.modified = True
     session.permanent = True
     print("session after callback:", session.get("user"))
+    print("cookies on callback:", request.cookies)
+    print("session after callback:", session.get("user"))
     next_page = request.args.get("state", "#/form")
     return redirect(f"{react_base_uri}/{next_page}")
 
@@ -593,6 +595,13 @@ def debug_read_session():
     print("debug read session:", session.get("user"))
     print("debug read cookies:", request.cookies)
     return {"session": session.get("user")}
+
+@app.route("/debug-oauth-session")
+def debug_oauth_session():
+    return {
+        "session_user": session.get("user"),
+        "cookies": dict(request.cookies)
+    }
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
