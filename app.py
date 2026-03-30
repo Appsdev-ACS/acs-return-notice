@@ -22,10 +22,17 @@ app.secret_key = "super_secret_key_change_this"
 #     SESSION_COOKIE_HTTPONLY=True
 # )
 
+# app.config.update(
+#     SESSION_COOKIE_SAMESITE="None",
+#     SESSION_COOKIE_SECURE=True,
+#     SESSION_COOKIE_HTTPONLY=True
+# )
+
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_HTTPONLY=True
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_PATH="/",
 )
 # origins = os.getenv("CORS_ORIGINS", "").split(",")
 
@@ -157,12 +164,23 @@ def callback():
     tokens = token_response.json()
     id_token = tokens.get("id_token")
 
-    # Step 4: Decode ID token
+    # # Step 4: Decode ID token
+    # decoded = jwt.decode(id_token, options={"verify_signature": False})
+
+    # # Save user session
+    # session["user"] = decoded
+    
     decoded = jwt.decode(id_token, options={"verify_signature": False})
 
-    # Save user session
-    session["user"] = decoded
-    
+    session["user"] = {
+        "email": decoded.get("email"),
+        "name": decoded.get("name"),
+        "upn": decoded.get("upn"),
+        "preferred_username": decoded.get("preferred_username"),
+    }
+    session.modified = True
+    session.permanent = True
+    print("session after callback:", session.get("user"))
     next_page = request.args.get("state", "#/form")
     return redirect(f"{react_base_uri}/{next_page}")
 
@@ -222,8 +240,11 @@ def logout():
 
 @app.route("/api/me")
 def me():
+    print("session in /api/me:", session.get("user"))
     if "user" not in session:
         return {"authenticated": False}, 401
+    
+    
 
     return {
         "authenticated": True,
