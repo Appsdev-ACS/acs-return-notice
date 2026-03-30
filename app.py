@@ -172,14 +172,15 @@ def callback():
     
     decoded = jwt.decode(id_token, options={"verify_signature": False})
 
+    session.clear()
     session["user"] = {
         "email": decoded.get("email"),
         "name": decoded.get("name"),
         "upn": decoded.get("upn"),
         "preferred_username": decoded.get("preferred_username"),
     }
-    session.modified = True
     session.permanent = True
+    session.modified = True
     print("session after callback:", session.get("user"))
     print("cookies on callback:", request.cookies)
     print("session after callback:", session.get("user"))
